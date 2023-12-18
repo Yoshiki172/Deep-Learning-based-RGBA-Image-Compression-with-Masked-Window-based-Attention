@@ -1,4 +1,4 @@
-#実行例:CUDA_VISIBLE_DEVICES=0 python trainRGB.py --config examples/example/config4096ver2.json -n test -pm checkpoints/mask1024highres_no_atten_P3M/iter_600000.pth.tar
+#Execution example:CUDA_VISIBLE_DEVICES=0 python trainRGB.py --config examples/example/config4096ver2.json -n test -pm checkpoints/mask1024highres_no_atten_P3M/iter_600000.pth.tar
 import os
 import argparse
 from Networks.AutoEncoderRGBver2 import AutoEncoder
@@ -95,32 +95,22 @@ def load_model(model, f):
         return 0
 
 def constraint(tensor):
-    # 3x3のフィルターを作成して、周辺の値を確認
+    # Create a 3x3 filter and check surrounding values
     kernel = torch.tensor([[[[1., 1., 1.],
                             [1., 0., 1.],
                             [1., 1., 1.]]]], dtype=torch.float32).to(device)
-    #print(kernel, kernel.shape)
     
-    # Convolutionを使用して、各ピクセルの周辺の合計を計算
+    # Calculate the sum around each pixel using Convolution
     neighbors_sum = F.conv2d(tensor, kernel, padding=1)
     #print("neighbors_sum:\n", neighbors_sum, neighbors_sum.shape)
     
-    # 0や255のピクセルの隣接性をチェック
+    # Check adjacency of 0 and 1 pixels
     isolated_zeros = (tensor == 0) & (neighbors_sum == 8)
-    isolated_255s = (tensor > 0) & (neighbors_sum == 0)
-    #isolated_zeros = (neighbors_sum == 8)
-    #isolated_255s = (neighbors_sum == 0)
-    #print("isolated_zeros:\n", isolated_zeros)
-    #print("isolated_255s:\n", isolated_255s)
+    isolated_ones = (tensor > 0) & (neighbors_sum == 0)
 
-    # 1〜254の値を持つピクセルを検出
-    # Uncomment this if you want to use it
-    #trans_pixels = (tensor > 0) & (tensor < 255)
-    #print("trans_pixels:\n", trans_pixels)
-
-    # 単独で0や255のピクセルを修正
+    # Fix 0 or 255 pixels alone.v
     tensor[isolated_zeros] = 1
-    tensor[isolated_255s] = 0
+    tensor[isolated_ones] = 0
 
     return tensor
 
@@ -150,8 +140,6 @@ def parse_config(config):
             lr_decay = config['lr']['decay']
         if 'decay_interval' in config['lr']:
             decay_interval = config['lr']['decay_interval']
-
-
 
 def adjust_learning_rate(optimizer, global_step):
     global cur_lr
@@ -191,16 +179,12 @@ def train(epoch, global_step):
                 mask = torch.ones_like(masked_input[:,0:1,:,:]).to(device)
         me1,me2,me3,me4,_,_ = EncMakeMask(mask)
         
-        #clipped_recon_mask, mse_loss_mask, bpp_mask,bpp_feature_mask, bpp_z_mask= masknet(mask)
         clipped_recon_mask = mask
         clipped_recon_image, mse_loss, bpp,bpp_feature, bpp_z= net(masked_input,mask,clipped_recon_mask,me1,me2,me3,me4)
-        # print("debug", clipped_recon_image.shape, " ", mse_loss.shape, " ", bpp.shape)
-        # print("debug", mse_loss, " ", bpp_feature, " ", bpp_z, " ", bpp)
         
         distribution_loss = bpp
         distortion = mse_loss
-        #distortion =  1 - ms_ssim(masked_input.detach(), clipped_recon_image,data_range=1.0, size_average=True)
-        #with torch.cuda.amp.autocast():
+        
         
         rd_loss = train_lambda * distortion + distribution_loss
         optimizer.zero_grad()
@@ -376,7 +360,7 @@ if __name__ == "__main__":
     logger.info(open(args.config).read())
     parse_config(args.config)
     
-    #ネットワークインスタンス作成
+    #Network Instance Creation
     model = AutoEncoder()
     maskmodel = MaskAutoEncoder()
     EncMakeMask = SupplyMaskToTransform()
