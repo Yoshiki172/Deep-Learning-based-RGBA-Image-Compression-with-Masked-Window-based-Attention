@@ -1,28 +1,5 @@
-#実行例:CUDA_VISIBLE_DEVICES=0 python trainmaskP3M.py --config examples/example/config.json -n mask
-"""
-コンテナの作り方
-docker run --name <任意のコンテナ名> -v <local directory path>:/path/to/container/directory --gpus all -it コンテナ名
-<例>
-docker run --name mycontainer -v <local directory path>:/path/to/container/directory --gpus all -it nvidia/cuda:11.4.0-cudnn8-devel-ubuntu20.04
+#Execution example:CUDA_VISIBLE_DEVICES=0 python trainmaskP3M.py --config examples/example/config.json -n mask
 
-復帰方法
-docker exec -it <コンテナ名> bash
-<例>
-docker exec -it mycontainer bash
-
-dockerの稼働状況確認
-docker ps -a
-
-停止中のdockerの起動
- docker start  <コンテナ名> 
-<例>
- docker start  mycontainer   
-
-コンテナの削除
- docker rm -f  <コンテナ名> 
-<例>
- docker rm -f  mycontainer   
-"""
 import os
 import argparse
 from Networks.AutoEncoderMaskVer6 import AutoEncoder
@@ -157,32 +134,21 @@ def adjust_learning_rate(optimizer, global_step, decay_lr):
     cur_lr = lr
 
 def constraint(tensor):
-    # 3x3のフィルターを作成して、周辺の値を確認
+    # Create a 3x3 filter and check surrounding values
     kernel = torch.tensor([[[[1., 1., 1.],
                             [1., 0., 1.],
                             [1., 1., 1.]]]], dtype=torch.float32).to(device)
-    #print(kernel, kernel.shape)
     
-    # Convolutionを使用して、各ピクセルの周辺の合計を計算
+    #Calculate the sum around each pixel using Convolution 
     neighbors_sum = F.conv2d(tensor, kernel, padding=1)
-    #print("neighbors_sum:\n", neighbors_sum, neighbors_sum.shape)
     
-    # 0や255のピクセルの隣接性をチェック
-    #isolated_zeros = (tensor == 0) & (neighbors_sum == 8)
-    #isolated_255s = (tensor > 0) & (neighbors_sum == 0)
+    # Check adjacency of 0 and 1 pixels
     isolated_zeros = (neighbors_sum == 8)
     isolated_255s = (neighbors_sum == 0)
-    #print("isolated_zeros:\n", isolated_zeros)
-    #print("isolated_255s:\n", isolated_255s)
 
-    # 1〜254の値を持つピクセルを検出
-    # Uncomment this if you want to use it
-    #trans_pixels = (tensor > 0) & (tensor < 255)
-    #print("trans_pixels:\n", trans_pixels)
-
-    # 単独で0や255のピクセルを修正
+    #Fix 0 or 1 pixel alone
     tensor[isolated_zeros] = 1
-    tensor[isolated_255s] = 0
+    tensor[isolated_ones] = 0
 
     return tensor
 
@@ -271,11 +237,7 @@ def train(epoch, global_step):
             # print("Model time", model_time)
         if global_step > decay_interval:
             adjust_learning_rate(optimizer, global_step, lr_decay)
-        """
-        if global_step > decay_interval2:
-            adjust_learning_rate(optimizer, global_step, lr_decay2)
-        """
-       
+      
         if (global_step % 2000) == 0:
             save_model_train(model, global_step, save_path)
             
@@ -293,16 +255,7 @@ def train(epoch, global_step):
 
 def testKodak(step):
     with torch.no_grad():
-        #test_dataset = TestKodakDataset(data_dir='./dataset/test')
-        """
-        test_transform = transforms.Compose([
-            transforms.ToTensor(),
-        ])
-        test_dataset = ImageFolder(root=test_root, # 画像が保存されているフォルダのパス
-                           transform=test_transform) # Tensorへの変換
-
-        test_loader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=1, pin_memory=True, num_workers=1)
-        """
+        
         test_loader ,test_dataset= prepare.prepare_dataset_Kodak(batch_size=1, rootpath="./Kodak/")
         net.eval()
         sumBpp = 0
@@ -390,25 +343,7 @@ if __name__ == "__main__":
     # save_model(model, 0)
     global train_loader
     tb_logger = SummaryWriter(os.path.join(save_path, 'events'))
-    #train_data_dir = './P3M/MASKpatches'
-    #train_dataset = Datasets(train_data_dir, image_size)
-    """
-    train_root = './P3Mdata'
-    train_transform = transforms.Compose([
-        transforms.Resize((256, 256)),
-        #transforms.RandomCrop((256, 256)),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.5),
-        transforms.ToTensor(),
-    ])
-    train_dataset = ImageFolder(root=train_root, # 画像が保存されているフォルダのパス
-                           transform=train_transform) # Tensorへの変換
-    train_loader = DataLoader(dataset=train_dataset,
-                              batch_size=batch_size,
-                              shuffle=True,
-                              pin_memory=True,
-                              num_workers=2)
-    """
+    
     train_loader,train_dataset = prepare.prepare_dataset_train_COCOP3M(batch_size=4,height=256,width=256,fill_mix_ratio=0.0)
     #train_loader,train_dataset = prepare.prepare_dataset_train_P3M(batch_size=batch_size, rootpath="./P3M", height=256, width=256)
     steps_epoch = global_step // (len(train_dataset) // (batch_size))# * gpu_num))
