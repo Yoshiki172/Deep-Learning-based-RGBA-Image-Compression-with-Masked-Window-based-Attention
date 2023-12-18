@@ -36,30 +36,22 @@ def get_scale_table(min=SCALES_MIN, max=SCALES_MAX, levels=SCALES_LEVELS):
     return torch.exp(torch.linspace(math.log(min), math.log(max), levels))
 
 def reconstruct_error(input,output,input_mask,output_mask):
-    """マスクの前処理(0に限りになく小さい値を0にするため)"""
-    #output_mask = output_mask * 255
-    #output_mask = torch.round(output_mask)/255
-    #入力マスクを３チャンネルに拡張
+    #Input mask extended to 3 channels
     input_mask = input_mask.expand(-1, 3, -1, -1)
-    #0より大きい値を1にする
+    #Set values greater than 0 to 1
     input_mask_one = (input_mask > 0.0).float()
-    #出力マスクを３チャンネルに拡張
-    #output_mask = output_mask.expand(-1, 3, -1, -1)
-    #0より大きい値を1にする
-    #output_mask_one = (output_mask > 0.0).float()
 
-    #torchvision.utils.save_image(output_mask_one, "outputKodak/mask.jpg")
     img1_masked = input * input_mask_one
     img2_masked = output * input_mask_one
 
-    # 再構成誤差を計算（Mean Squared Error）
-    mse = F.mse_loss(img1_masked, img2_masked, reduction='none')  # ピクセルごとの二乗誤差
+    # （Mean Squared Error）
+    mse = F.mse_loss(img1_masked, img2_masked, reduction='none')  # Squared error per pixel
     mse = torch.sum(mse,dim=(1,2,3))
-    #ここ変えて！！！！！！！！！！！！！！！
-    num_unmasked_pixels = torch.sum(input_mask_one,dim=(1,2,3)) # マスクされていないピクセルの数
+    
+    num_unmasked_pixels = torch.sum(input_mask_one,dim=(1,2,3)) #Number of unmasked pixels
     num_unmasked_pixels = torch.clamp(num_unmasked_pixels, min=1)
 
-    reconstruction_error = torch.mean(torch.div(mse,num_unmasked_pixels))  # マスクされていない部分の平均二乗誤差
+    reconstruction_error = torch.mean(torch.div(mse,num_unmasked_pixels))  #Mean squared error of the unmasked area
     
     return reconstruction_error
 def conv(in_channels, out_channels, kernel_size=5, stride=2):
