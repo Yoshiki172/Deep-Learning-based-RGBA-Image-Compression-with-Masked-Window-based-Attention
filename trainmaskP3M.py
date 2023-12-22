@@ -144,7 +144,7 @@ def constraint(tensor):
     
     # Check adjacency of 0 and 1 pixels
     isolated_zeros = (neighbors_sum == 8)
-    isolated_255s = (neighbors_sum == 0)
+    isolated_ones = (neighbors_sum == 0)
 
     #Fix 0 or 1 pixel alone
     tensor[isolated_zeros] = 1
