@@ -7,7 +7,7 @@ import torch.nn.functional as F
 class SupplyMaskToTransform(torch.nn.Module):
     def __init__(self,kernel=3):
         super(SupplyMaskToTransform,self).__init__()
-        self.pool = nn.AvgPool2d(kernel, stride=2,padding=1)
+        self.pool = nn.MaxPool2d(kernel, stride=2,padding=1)
     def forward(self, inputs):
         mask1 = self.pool(inputs)#(256→128)
         mask2 = self.pool(mask1)#(128→64)
