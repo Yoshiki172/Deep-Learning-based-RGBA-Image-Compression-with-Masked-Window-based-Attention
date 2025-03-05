@@ -53,7 +53,7 @@ CUDA_VISIBLE_DEVICES=0 python trainmask.py --config examples/example/config4096.
 
 ---
 
-### Pre-trained Weights
+### Trained Weights
 
-Download the pre-trained weights used for training from the following Google Drive link:
+Download the trained weights from the [Google Drive](https://drive.google.com/drive/folders/1he5Vfy6xxTmBefEwbisk3aCKo1oAKgtt?usp=sharing).
 
